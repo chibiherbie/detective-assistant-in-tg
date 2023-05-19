@@ -2,18 +2,20 @@ import telebot as telebot
 
 from config_bot import TOKEN_BOT
 import re
+from utils import clear_url_chat_id
+import telegram_api
+import json
 
 bot = telebot.TeleBot(TOKEN_BOT)
 GROUP_ID = '-956074757'
 ORD_LIST_SYMBOL = [21328, 1161]
 ORD_RUSSIA = [1040, 1103]
 ORD_ENGLISH = [1, 122]
-BORDER_STRANGE_MIDDLE = 2
-BORDER_STRANGE = 5
+BORDER_STRANGE_MIDDLE = 4
+BORDER_STRANGE = 8
 
 
 def analyze_text(text):
-
     strange_elem = []
     count = 0
 
@@ -46,24 +48,97 @@ def analyze_text(text):
 
 @bot.message_handler(commands=['start'])
 def start_message(message):
-    bot.send_message(message.chat.id, "Привет. Моя задач находить плохие слова. Пока я в тестовом режиме, поэтому "
-                                      "добавь меня в группу, и я попробую там найти что-то нехорошое")
+    bot.send_message(message.chat.id, 'Привет. Моя задач находить плохие слова. Пока я в тестовом режиме, поэтому '
+                                      'отправь мне группу или пришли сообщение, и я попробую там найти что-то нехорошое')
 
 
 @bot.message_handler(commands=['search'])
-def button_message(message):
-    bot.send_message(message.chat.id, 'Выполняю поиск... (в будущем)')
+def group_message(message):
+    bot.send_message(message.chat.id, 'Отправь мне ссылку на группу или ник этой группы'
+                                      '\n\nНапример:\nhttps://t.me/somegroup\nt.me/somegroup\n@somegroup'
+                                      '\n\nЕсли твоя ссылка не похожа на ссылки из примеров, то перешли сообщение из группы')
+    bot.register_next_step_handler(message, get_group_url)
+
+
+def get_group_url(message):
+    msg_finished = []
+
+    try:
+        if message.forward_from_chat:
+            id_chat = message.forward_from_chat.id
+        else:
+            username_chat = clear_url_chat_id(message.text)
+            id_chat = telegram_api.get_id_chat(username_chat)
+        messages = telegram_api.get_message(id_chat)
+        for message_chat in messages:
+            if message_chat['content']['@type'] == 'messageText':
+                print(message_chat['content']['text']['text'])
+
+                status = analyze_text(message_chat['content']['text']['text'])
+
+                text_clear = re.sub("[^\w\s, ]", "", message_chat['content']['text']['text'])
+                msg_clear = f'\n\nОбработанное сообщение:\n"{text_clear}"'
+
+                # if not status:
+                #     bot.send_message(message.chat.id, f'Сообщение выглядит нормально{msg_clear}')
+                if status == 1:
+                    msg_finished.append(f'Сообщение подозрительное{msg_clear}')
+                elif status == 2:
+                    msg_finished.append(f'Сообщение точно что-то скрывает{msg_clear}')
+
+            if len(msg_finished) >= 10:
+                bot.send_message(message.chat.id, f'\n{"-" * 10}\n'.join(msg_finished))
+                msg_finished = []
+
+        if msg_finished:
+            bot.send_message(message.chat.id, f'\n{"-" * 10}\n'.join(msg_finished))
+
+        bot.send_message(message.chat.id, f'Анализ закончен')
+
+            # bot.forward_message(message.chat.id, id_chat, message_chat['id'])
+
+    except Exception as e:
+        print(e)
+        bot.send_message(message.chat.id, f'Так... что-то не то\nДля повторнйо попытки введи /search')
+
+
+@bot.message_handler(commands=['list_symbol'])
+def group_message(message):
+    msg = ''
+    for s in ORD_LIST_SYMBOL:
+        msg += f'{chr(s)}\n'
+    bot.send_message(message.chat.id, msg)
+
+
+@bot.message_handler(commands=['add_symbol'])
+def group_message(message):
+    bot.send_message(message.chat.id, 'Отправь символ, чтобы каждый раз реагировать на него')
+    bot.register_next_step_handler(message, add_symbol)
+
+
+def add_symbol(message):
+    global ORD_LIST_SYMBOL
+
+    symbol = ord(message.text)
+    ORD_LIST_SYMBOL.append(symbol)
+    danger_symbol['danger_symbol'] = ORD_LIST_SYMBOL
+    with open('danger_symbol.json', 'w') as f:
+        json.dump(danger_symbol, f)
+    bot.send_message(message.chat.id, f'Символ {message.text} добавлен')
 
 
 @bot.message_handler(content_types=['text'])
-def echo(message):
+def some_text(message):
     print("Сообщение", message.text)
+    analyze_message(message)
 
+
+def analyze_message(message):
     status = analyze_text(message.text)
-    
+
     text_clear = re.sub("[^\w\s, ]", "", message.text)
-    msg_clear = f'\n\nОбработанное сообщение:\n"{text_clear}"'
-    
+    msg_clear = f'\n\nОбработанное чистое сообщение:\n"{text_clear}"'
+
     if not status:
         bot.reply_to(message, f'сообщение выглядит нормально{msg_clear}')
     elif status == 1:
@@ -72,4 +147,8 @@ def echo(message):
         bot.reply_to(message, f'сообщение точно что-то скрывает{msg_clear}')
 
 
+with open('danger_symbol.json') as f:
+    danger_symbol = json.load(f)
+
+ORD_LIST_SYMBOL = danger_symbol['danger_symbol']
 bot.polling(none_stop=True)
