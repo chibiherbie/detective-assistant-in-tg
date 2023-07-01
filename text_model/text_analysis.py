@@ -22,7 +22,7 @@ import re
 
 
 class text_analysis_class:
-    def __init__(self, pipe_mode, measure_unit):
+    def __init__(self, pipe_mode, measure_unit=''):
         # формируем конвеер
         # self.pipe= Pipeline([("tokenizer",text2tokenize_text()),
         #                      ("lematizer",text_tokenize2text_lem()),
@@ -89,15 +89,24 @@ class text_analysis_class:
 
         y_pred = self.pipe.predict(df1['clr_text'])
         df1['labels'] = y_pred
-        df1['measure'] = df1['labels'].apply(self.labels2measure)
+        print(df1)
+        # df1['measure'] = df1['labels'].apply(self.labels2measure)
 
         stat = self.get_stat(df1['clr_text'])
         return df1, stat
 
 
+def main(text):
+    pipe_model = joblib.load('model_nlp.pkl')
+    model = text_analysis_class(pipe_model)
+    df_rez, stat = model.predict(text)
+
+    return df_rez
+
+
 if __name__ == '__main__':
 
-    pipe_model = joblib.load('model_nlp.pkl')
+
 
     # document = Document('text.docx')
     # text = ''''''
@@ -108,11 +117,15 @@ if __name__ == '__main__':
     #         flag = True
     #     else:
     #         text += ' \n ' + p.text
-    text = """Нет, хуйня это ваш зумерский снюс."""
-    measure_unit = pd.read_excel('measure_unit.xlsx')
-    measure_unit.set_index('unit_of_measurement', inplace=True)
-    measure_unit = measure_unit['measure']
-    model = text_analysis_class(pipe_model, measure_unit)
+    text = """Нет, хуйня это ваш зумерский снюс. \n Всем привет, как дела? \n (⌒▽⌒)☆【B】ШｋＯЛｅ≧◡≦Tak匚【k】ㄚЧH̲o̲＼(￣▽￣)／ \n ║ [ Н҉А҉ С҉Л҉У҉Ч҉А҉Й҉ Е҉С҉Л҉И҉ Я҉ У҉М҉Р҉У \n Группа создана в экспериментальных целях \n Как настоящий ру$$кий я предпочту убойный насвай, синтетический гашиш, метадон, и мефедрон"""
+    # print(main(text))
+    # input()
+    # measure_unit = pd.read_excel('measure_unit.xlsx')
+    # measure_unit.set_index('unit_of_measurement', inplace=True)
+    # measure_unit = measure_unit['measure']
+
+    pipe_model = joblib.load('model_nlp.pkl')
+    model = text_analysis_class(pipe_model)
     df_rez, stat = model.predict(text)
     try:
         df_rez.to_excel('text_analysis_result.xlsx')
