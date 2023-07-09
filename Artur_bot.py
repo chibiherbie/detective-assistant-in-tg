@@ -130,7 +130,7 @@ def get_group_url(message):
 
     except Exception as e:
         print(e)
-        bot.send_message(message.chat.id, f'Так... что-то не то\nДля повторнйо попытки введи /search')
+        bot.send_message(message.chat.id, f'Так... что-то не то\nДля повторной попытки введи /search')
 
 
 @bot.message_handler(commands=['list_symbol'])
@@ -160,9 +160,13 @@ def add_symbol(message):
 
 @bot.message_handler(content_types=['text'])
 def some_text(message):
-    print("Сообщение", message.text)
-    bot.send_message(message.chat.id, 'Обработка началась, ожидайте')
-    analyze_message_model(message)
+    try:
+        print("Сообщение", message.text)
+        bot.send_message(message.chat.id, 'Обработка началась, ожидайте')
+        analyze_message_model(message)
+    except Exception as e:
+        print(e)
+        bot.send_message(message.chat.id, f'Так... что-то не то\nПопробуй ещё раз')
 
 
 def analyze_message_model(message):
