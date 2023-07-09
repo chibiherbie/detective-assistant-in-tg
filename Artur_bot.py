@@ -10,7 +10,6 @@ import json
 from text_model.text_analysis import analysis_text
 
 bot = telebot.TeleBot(TOKEN_BOT)
-GROUP_ID = '-956074757'
 ORD_LIST_SYMBOL = [21328, 1161]
 ORD_RUSSIA = [1040, 1103]
 ORD_ENGLISH = [1, 122]
@@ -19,6 +18,7 @@ BORDER_STRANGE = 8
 
 
 def analyze_special_symbol(text):
+    """Анализ на специальный символы"""
     for i in text:
         if ord(i) in ORD_LIST_SYMBOL:
             return True
@@ -26,6 +26,7 @@ def analyze_special_symbol(text):
 
 
 def analyze_text(text):
+    """Определение степени подозрительности текста"""
     strange_elem = []
     count = 0
 
@@ -33,9 +34,8 @@ def analyze_text(text):
     print(clean_text)
 
     # Проверка на специльные символы
-    for i in text:
-        if ord(i) in ORD_LIST_SYMBOL:
-            return 1
+    if analyze_special_symbol(text):
+        return 1
 
     # Проврека чистого текста
     for i in clean_text:
@@ -63,7 +63,7 @@ def start_message(message):
 
 
 @bot.message_handler(commands=['search'])
-def group_message(message):
+def analyze_group_message(message):
     bot.send_message(message.chat.id, 'Отправь мне ссылку на группу или ник этой группы'
                                       '\n\nНапример:\nhttps://t.me/somegroup\nt.me/somegroup\n@somegroup'
                                       '\n\nЕсли твоя ссылка не похожа на ссылки из примеров, то перешли сообщение из группы')
@@ -71,6 +71,7 @@ def group_message(message):
 
 
 def get_group_url(message):
+    """Сканирование сообщений в группе по ссылке"""
 
     bot.send_message(message.chat.id, 'Обработка началась, ожидайте')
 
@@ -94,18 +95,6 @@ def get_group_url(message):
                     msg_finished.append(f'Сообщение подозрительное, найден символ из списка\n{msg}')
                 else:
                     all_text += f'{msg} \n '
-                    # status = analyze_text(message_chat['content']['text']['text'])
-
-
-                # text_clear = re.sub("[^\w\s, ]", "", message_chat['content']['text']['text'])
-                # msg_clear = f'\n\nОбработанное сообщение:\n"{text_clear}"'
-                #
-                # # if not status:
-                # #     bot.send_message(message.chat.id, f'Сообщение выглядит нормально{msg_clear}')
-                # if status == 1:
-                #     msg_finished.append(f'Сообщение подозрительное{msg_clear}')
-                # elif status == 2:
-                #     msg_finished.append(f'Сообщение точно что-то скрывает{msg_clear}')
 
             if len(msg_finished) >= 10:
                 bot.send_message(message.chat.id, f'\n{"-" * 10}\n'.join(msg_finished))
@@ -126,15 +115,13 @@ def get_group_url(message):
 
         bot.send_message(message.chat.id, f'Анализ закончен')
 
-            # bot.forward_message(message.chat.id, id_chat, message_chat['id'])
-
     except Exception as e:
         print(e)
         bot.send_message(message.chat.id, f'Так... что-то не то\nДля повторной попытки введи /search')
 
 
 @bot.message_handler(commands=['list_symbol'])
-def group_message(message):
+def list_symbol(message):
     msg = ''
     for s in ORD_LIST_SYMBOL:
         msg += f'{chr(s)}\n'
@@ -142,12 +129,12 @@ def group_message(message):
 
 
 @bot.message_handler(commands=['add_symbol'])
-def group_message(message):
-    bot.send_message(message.chat.id, 'Отправь символ, чтобы каждый раз реагировать на него')
-    bot.register_next_step_handler(message, add_symbol)
-
-
 def add_symbol(message):
+    bot.send_message(message.chat.id, 'Отправь символ, чтобы каждый раз реагировать на него')
+    bot.register_next_step_handler(message, add_symbol_to_list)
+
+
+def add_symbol_to_list(message):
     global ORD_LIST_SYMBOL
 
     symbol = ord(message.text)
