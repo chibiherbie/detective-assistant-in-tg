@@ -1,3 +1,5 @@
+import time
+
 import telebot as telebot
 
 from config_bot import TOKEN_BOT
@@ -117,6 +119,7 @@ def get_group_url(message):
             if len(msg_finished) >= 10:
                 bot.send_message(message.chat.id, f'\n{"-" * 10}\n'.join(msg_finished))
                 msg_finished = []
+                time.sleep(1)
 
         if msg_finished:
             bot.send_message(message.chat.id, f'\n{"-" * 10}\n'.join(msg_finished))
