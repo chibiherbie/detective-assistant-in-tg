@@ -5,6 +5,7 @@ import re
 from utils import clear_url_chat_id
 import telegram_api
 import json
+from text_model.text_analysis import analysis_text
 
 bot = telebot.TeleBot(TOKEN_BOT)
 GROUP_ID = '-956074757'
@@ -13,6 +14,13 @@ ORD_RUSSIA = [1040, 1103]
 ORD_ENGLISH = [1, 122]
 BORDER_STRANGE_MIDDLE = 4
 BORDER_STRANGE = 8
+
+
+def analyze_special_symbol(text):
+    for i in text:
+        if ord(i) in ORD_LIST_SYMBOL:
+            return True
+    return False
 
 
 def analyze_text(text):
@@ -61,6 +69,9 @@ def group_message(message):
 
 
 def get_group_url(message):
+
+    bot.send_message(message.chat.id, 'Обработка началась, ожидайте')
+
     msg_finished = []
 
     try:
@@ -70,22 +81,39 @@ def get_group_url(message):
             username_chat = clear_url_chat_id(message.text)
             id_chat = telegram_api.get_id_chat(username_chat)
         messages = telegram_api.get_message(id_chat)
+
+        all_text = ''
         for message_chat in messages:
             if message_chat['content']['@type'] == 'messageText':
-                print(message_chat['content']['text']['text'])
+                msg = message_chat['content']['text']['text']
+                print(msg)
 
-                status = analyze_text(message_chat['content']['text']['text'])
+                if analyze_special_symbol(msg):
+                    msg_finished.append(f'Сообщение подозрительное, найден символ из списка\n{msg}')
+                else:
+                    all_text += f'{msg} \n '
+                    # status = analyze_text(message_chat['content']['text']['text'])
 
-                text_clear = re.sub("[^\w\s, ]", "", message_chat['content']['text']['text'])
-                msg_clear = f'\n\nОбработанное сообщение:\n"{text_clear}"'
 
-                # if not status:
-                #     bot.send_message(message.chat.id, f'Сообщение выглядит нормально{msg_clear}')
-                if status == 1:
-                    msg_finished.append(f'Сообщение подозрительное{msg_clear}')
-                elif status == 2:
-                    msg_finished.append(f'Сообщение точно что-то скрывает{msg_clear}')
+                # text_clear = re.sub("[^\w\s, ]", "", message_chat['content']['text']['text'])
+                # msg_clear = f'\n\nОбработанное сообщение:\n"{text_clear}"'
+                #
+                # # if not status:
+                # #     bot.send_message(message.chat.id, f'Сообщение выглядит нормально{msg_clear}')
+                # if status == 1:
+                #     msg_finished.append(f'Сообщение подозрительное{msg_clear}')
+                # elif status == 2:
+                #     msg_finished.append(f'Сообщение точно что-то скрывает{msg_clear}')
 
+            if len(msg_finished) >= 10:
+                bot.send_message(message.chat.id, f'\n{"-" * 10}\n'.join(msg_finished))
+                msg_finished = []
+
+        result = analysis_text(all_text)
+        for i in result.itertuples():
+            print(i.text, i.labels)
+            if not i.labels:
+                msg_finished.append(f'Сообщение подозрительное \n{i.text}')
             if len(msg_finished) >= 10:
                 bot.send_message(message.chat.id, f'\n{"-" * 10}\n'.join(msg_finished))
                 msg_finished = []
@@ -130,7 +158,21 @@ def add_symbol(message):
 @bot.message_handler(content_types=['text'])
 def some_text(message):
     print("Сообщение", message.text)
-    analyze_message(message)
+    bot.send_message(message.chat.id, 'Обработка началась, ожидайте')
+    analyze_message_model(message)
+
+
+def analyze_message_model(message):
+    if analyze_special_symbol(message.text):
+        bot.reply_to(message, f'сообщение подозрительное, найден символ из списка \n {message.text}')
+
+    result = analysis_text(message.text)
+    for i in result.itertuples():
+        print(i.text, i.labels)
+        if i.labels:
+            bot.reply_to(message, f'Сообщение не подозрительное')
+        else:
+            bot.reply_to(message, f'Сообщение подозрительное')
 
 
 def analyze_message(message):
