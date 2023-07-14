@@ -84,11 +84,15 @@ def get_group_url(message):
             username_chat = clear_url_chat_id(message.text)
             id_chat = telegram_api.get_id_chat(username_chat)
         messages = telegram_api.get_message(id_chat)
+        print(id_chat)
 
         all_text = ''
         for message_chat in messages:
             if message_chat['content']['@type'] == 'messageText':
                 msg = message_chat['content']['text']['text']
+                chat_info = bot.get_chat(message_chat['chat_id'])
+                print(chat_info)
+                msg_link = f"https://t.me/{chat_info.username}/{message_chat['id']}"
                 print(msg)
 
                 if analyze_special_symbol(msg):
@@ -100,15 +104,15 @@ def get_group_url(message):
                 bot.send_message(message.chat.id, f'\n{"-" * 10}\n'.join(msg_finished))
                 msg_finished = []
 
-        result = analysis_text(all_text)
-        for i in result.itertuples():
-            print(i.text, i.labels)
-            if not i.labels:
-                msg_finished.append(f'Сообщение подозрительное \n{i.text}')
-            if len(msg_finished) >= 10:
-                bot.send_message(message.chat.id, f'\n{"-" * 10}\n'.join(msg_finished))
-                msg_finished = []
-                time.sleep(1)
+        # result = analysis_text(all_text)
+        # for i in result.itertuples():
+        #     print(i.text, i.labels)
+        #     if not i.labels:
+        #         msg_finished.append(f'Сообщение подозрительное \n{i.text}')
+        #     if len(msg_finished) >= 10:
+        #         bot.send_message(message.chat.id, f'\n{"-" * 10}\n'.join(msg_finished))
+        #         msg_finished = []
+        #         time.sleep(1)
 
         if msg_finished:
             bot.send_message(message.chat.id, f'\n{"-" * 10}\n'.join(msg_finished))
