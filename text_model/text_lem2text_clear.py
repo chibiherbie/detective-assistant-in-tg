@@ -17,7 +17,7 @@ class text_lem2text_clear(BaseEstimator, TransformerMixin):
         return
 
     def fit(self, X, y=None):
-        stop_words = nltk.corpus.stopwords.words('Russian')
+        stop_words = nltk.corpus.stopwords.words('russian')
         self.stop_words = set(stop_words)
         return self
 
